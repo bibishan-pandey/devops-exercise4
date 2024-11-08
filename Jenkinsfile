@@ -25,6 +25,12 @@ pipeline {
             }
         }
 
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t bibishanpandey/devops-exercise4:latest ."
+            }
+        }
+
 
         stage('Install Dependencies') {
             steps {
