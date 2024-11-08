@@ -8,6 +8,8 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT ?? 8000;
 
+console.log("Hello World");
+
 app.get("/", (_: Request, res: Response) => {
 	res.send("Express + TypeScript Server");
 });
