@@ -11,6 +11,8 @@ services:
             - jenkins_home:/var/jenkins_home
         environment:
             JENKINS_OPTS: --httpPort=8080
+        networks:
+            - sonar-network
 
     sonarqube:
         image: sonarqube:latest
@@ -30,6 +32,8 @@ services:
             - sonarqube_extensions:/opt/sonarqube/extensions:rw
             - sonarqube_logs:/opt/sonarqube/logs:rw
             - sonarqube_temp:/opt/sonarqube/temp:rw
+        networks:
+            - sonar-network
 
     sonar_db:
         image: postgres:latest
@@ -41,6 +45,8 @@ services:
         volumes:
             - sonar_db:/var/lib/postgresql
             - sonar_db_data:/var/lib/postgresql/data
+        networks:
+            - sonar-network
 
     nexus:
         image: sonatype/nexus3:latest
@@ -48,11 +54,13 @@ services:
         ports:
             - "8081:8081"
         volumes:
-            - nexus_data:/nexus-data
+            - nexus-data:/nexus-data
+        networks:
+            - sonar-network
 
 volumes:
     jenkins_home:
-    nexus_data:
+    nexus-data:
     sonarqube_conf:
     sonarqube_data:
     sonarqube_extensions:
@@ -60,3 +68,7 @@ volumes:
     sonarqube_temp:
     sonar_db:
     sonar_db_data:
+
+networks:
+    sonar-network:
+        driver: bridge
