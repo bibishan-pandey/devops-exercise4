@@ -1,0 +1,85 @@
+name: Terraform Destroy
+
+# This trigger allows you to manually execute the pipeline
+on:
+    workflow_dispatch:
+
+jobs:
+    terraform_destroy:
+        runs-on: ubuntu-latest
+        env:
+            TF_VAR_ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+            TF_VAR_ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+            TF_VAR_ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+            TF_VAR_ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+            TF_VAR_GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+            TF_VAR_GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v2
+
+            - name: Setup Terraform
+              uses: hashicorp/setup-terraform@v1
+
+            - name: Terraform init
+              run: terraform init
+
+            - name: Terraform plan (destroy)
+              run: |
+                  terraform plan -destroy -input=false
+
+            - name: Manual Approval (Optional)
+              if: github.event_name == 'workflow_dispatch'
+              run: |
+                  echo "This is a manual approval step. Proceed with terraform destroy after confirming."
+                  # Use GitHub Actions' manual approval, or just proceed without if no approval is required.
+                  # Uncomment the next line to pause until approval:
+                  # read -p "Press any key to continue after manual approval"
+
+            - name: Terraform destroy
+              run: |
+                  az login --service-principal --username $TF_VAR_ARM_CLIENT_ID --password $TF_VAR_ARM_CLIENT_SECRET --tenant $TF_VAR_ARM_TENANT_ID
+
+                  # Check if resource group exists in Azure and import if exists
+                  az resource show --id "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg" &>/dev/null && \
+                  terraform import azurerm_resource_group.rg /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg || \
+                  echo "Resource azurerm_resource_group.rg does not exist"
+
+                  # Check if virtual network exists in Azure and import if exists
+                  az resource show --id "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/virtualNetworks/nodeapp-vnet" &>/dev/null && \
+                  terraform import azurerm_virtual_network.vnet /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/virtualNetworks/nodeapp-vnet || \
+                  echo "Resource azurerm_virtual_network.vnet does not exist"
+
+                  # Check if subnet exists in Azure and import if exists
+                  az resource show --id "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/virtualNetworks/nodeapp-vnet/subnets/nodeapp-subnet" &>/dev/null && \
+                  terraform import azurerm_subnet.subnet /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/virtualNetworks/nodeapp-vnet/subnets/nodeapp-subnet || \
+                  echo "Resource azurerm_subnet.subnet does not exist"
+
+                  # Check if public IP exists in Azure and import if exists
+                  az resource show --id "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/publicIPAddresses/nodeapp-public-ip" &>/dev/null && \
+                  terraform import azurerm_public_ip.public_ip /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/publicIPAddresses/nodeapp-public-ip || \
+                  echo "Resource azurerm_public_ip.public_ip does not exist"
+
+                  # Check if network interface exists in Azure and import if exists
+                  az resource show --id "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkInterfaces/nodeapp-nic" &>/dev/null && \
+                  terraform import azurerm_network_interface.nic /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkInterfaces/nodeapp-nic || \
+                  echo "Resource azurerm_network_interface.nic does not exist"
+
+                  # Check if network security group exists in Azure and import if exists
+                  az resource show --id "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkSecurityGroups/nodeapp-nsg" &>/dev/null && \
+                  terraform import azurerm_network_security_group.nsg /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkSecurityGroups/nodeapp-nsg || \
+                  echo "Resource azurerm_network_security_group.nsg does not exist"
+
+                  # Import network interface security group association
+                  az resource show --id "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkInterfaces/nodeapp-nic/networkSecurityGroups/nodeapp-nsg" &>/dev/null && \
+                  terraform import azurerm_network_interface_security_group_association.nic_nsg_association /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkInterfaces/nodeapp-nic/networkSecurityGroups/nodeapp-nsg || \
+                  echo "Resource azurerm_network_interface_security_group_association.nic_nsg_association does not exist"
+
+                  # Check if virtual machine exists in Azure and import if exists
+                  az resource show --id "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Compute/virtualMachines/nodeapp-vm" &>/dev/null && \
+                  terraform import azurerm_linux_virtual_machine.vm /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Compute/virtualMachines/nodeapp-vm || \
+                  echo "Resource azurerm_linux_virtual_machine.vm does not exist"
+
+                  # Now apply the destroy plan
+                  terraform apply -input=false -auto-approve

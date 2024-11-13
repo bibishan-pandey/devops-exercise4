@@ -207,6 +207,10 @@ resource "azurerm_linux_virtual_machine" "vm" {
       "sudo gpasswd -a $USER docker",
       "sudo systemctl restart docker",
 
+      "sudo curl -L https://github.com/docker/compose/releases/download/1.29.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose",
+      "sudo chmod +x /usr/local/bin/docker-compose",
+      "docker-compose --version",
+
       # Clone the Git repository using HTTPS with a token
       "git clone https://${var.GIT_USERNAME}:${var.GIT_TOKEN}@github.com/bibishan-pandey/devops-exercise4.git /home/azureuser/devops-exercise4",
 

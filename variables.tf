@@ -21,5 +21,4 @@ variable "GIT_USERNAME" {
 variable "GIT_TOKEN" {
   type        = string
   description = "GitHub Personal Access Token"
-  sensitive   = true
 }
