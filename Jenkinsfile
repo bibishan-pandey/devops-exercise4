@@ -5,18 +5,25 @@ pipeline {
         SONARQUBE_URL = 'http://sonarqube:9000'
         SONARQUBE_TOKEN = 'sqp_914a7b2225f5519a2b94dd28a93c637ae8975107'
         NEXUS_URL = 'http://nexus:8081/repository/maven-releases/'
-        WORKSPACE = '/home/bibishanpandey/Downloads/3rd Sem/DevOps/devops-exercise4'
-        // WORKSPACE = pwd()
+        // WORKSPACE = '/home/bibishanpandey/Downloads/3rd Sem/DevOps/devops-exercise4'
+        WORKSPACE = pwd()
         NEXUS_CREDENTIALS = credentials('nexus-credentials-id')
     }
 
     stages {
-        stage('Clone Repository') {
+        stage('Checkout') {
             steps {
-                git 'https://github.com/bibishan-pandey/devops-exercise4.git'
+                echo 'Checking out the code...'
+                checkout scm
             }
         }
 
+        stage('Install Dependencies') {
+            steps {
+                echo 'Installing dependencies...'
+                sh 'yarn install'
+            }
+        }
 
         stage('Run Tests') {
             steps {
@@ -25,49 +32,21 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                sh "docker build -t bibishanpandey/devops-exercise4:latest ."
-            }
-        }
-
-
-        stage('Install Dependencies') {
-            steps {
-                script {
-                    // Install dependencies using Yarn (or npm)
-                    sh 'yarn install'
-                }
-            }
-        }
-
         stage('Build') {
             steps {
-                script {
-                    // Compile the TypeScript code
-                    sh 'yarn build'
-                }
+                echo 'Building the project...'
+                sh 'yarn build'
             }
         }
 
         stage('SonarQube Analysis') {
+            environment {
+                scannerHome = tool 'lil-sonar-tool';
+            }
+
             steps {
-                script {
-                    // Run SonarQube analysis using Docker
-                    sh '''
-                    docker run --rm \
-                        --network sonar-network \
-                        -e SONAR_HOST_URL="${SONARQUBE_URL}" \
-                        -e SONAR_TOKEN="${SONARQUBE_TOKEN}" \
-                        -v "${WORKSPACE}:/usr/src" \
-                        sonarsource/sonar-scanner-cli \
-                        -Dsonar.projectKey=devops-exercise4 \
-                        -Dsonar.sources=. \
-                        -Dsonar.exclusions="**/node_modules/**" \
-                        -Dsonar.language=js \
-                        -Dsonar.sourceEncoding=UTF-8 \
-                        -X
-                    '''
+                withSonarQubeEnv(credentialsId: 'SonarQubeToken', installationName: 'lil sonar installation') {
+                    sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=devops-exercise4 -Dsonar.sources=src -Dsonar.host.url=${SONARQUBE_URL} -Dsonar.login=${SONARQUBE_TOKEN}"
                 }
             }
         }
@@ -100,6 +79,13 @@ pipeline {
                         ${NEXUS_URL}/com/example/devops-exercise4/1.0.0/devops-exercise4-1.0.0.jar
                     '''
                 }
+            }
+        }
+
+        stage('Deploy to Production') {
+            steps {
+                echo 'Deploying to production...'
+                sh 'yarn start'
             }
         }
     }
