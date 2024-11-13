@@ -83,4 +83,4 @@ jobs:
                   echo "Resource azurerm_linux_virtual_machine.vm does not exist"
 
                   # Now apply the destroy plan
-                  terraform apply -input=false -auto-approve
+                  terraform apply -destroy -input=false -auto-approve
