@@ -72,8 +72,9 @@ jobs:
                   echo "Resource azurerm_network_security_group.nsg does not exist"
 
                   # Import network interface security group association
-                  az resource show --id "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkInterfaces/nodeapp-nic/networkSecurityGroups/nodeapp-nsg" &>/dev/null && \
-                  terraform import azurerm_network_interface_security_group_association.nic_nsg_association /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkInterfaces/nodeapp-nic/networkSecurityGroups/nodeapp-nsg || \
+                  az resource show --id "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkInterfaces/nodeapp-nic" &>/dev/null && \
+                  az resource show --id "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkSecurityGroups/nodeapp-nsg" &>/dev/null && \
+                  terraform import azurerm_network_interface_security_group_association.nic_nsg_association "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkInterfaces/nodeapp-nic|/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/nodeapp-rg/providers/Microsoft.Network/networkSecurityGroups/nodeapp-nsg" || \
                   echo "Resource azurerm_network_interface_security_group_association.nic_nsg_association does not exist"
 
                   # Check if virtual machine exists in Azure and import if exists
