@@ -6,7 +6,8 @@ pipeline {
         SONARQUBE_TOKEN = 'sqp_914a7b2225f5519a2b94dd28a93c637ae8975107'
         NEXUS_URL = 'http://nexus:8081/repository/maven-releases/'
         // WORKSPACE = '/home/bibishanpandey/Downloads/3rd Sem/DevOps/devops-exercise4'
-        WORKSPACE = pwd()
+        // WORKSPACE = pwd()
+        WORKSPACE = '/var/jenkins_home/devops-exercise4'
         NEXUS_CREDENTIALS = credentials('nexus-credentials-id')
     }
 
