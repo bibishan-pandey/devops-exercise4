@@ -21,10 +21,6 @@ provider "azurerm" {
 resource "azurerm_resource_group" "rg" {
   name     = "nodeapp-rg"     # Name of the resource group.
   location = "Canada Central" # Region where the resource group will be created.
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # Virtual Network
@@ -33,11 +29,6 @@ resource "azurerm_virtual_network" "vnet" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   address_space       = ["10.0.0.0/16"]
-
-  # Only create if the resource does not exist
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # Subnet
@@ -46,11 +37,6 @@ resource "azurerm_subnet" "subnet" {
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.2.0/24"]
-
-  # Only create if the resource does not exist
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # Public IP
@@ -74,11 +60,6 @@ resource "azurerm_network_interface" "nic" {
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.public_ip.id
-  }
-
-  # Only create if the resource does not exist
-  lifecycle {
-    prevent_destroy = true
   }
 }
 
@@ -150,11 +131,6 @@ resource "azurerm_network_security_group" "nsg" {
     destination_port_range     = "8081"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
-  }
-
-  # Only create if the resource does not exist
-  lifecycle {
-    prevent_destroy = true
   }
 }
 
