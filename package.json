@@ -5,11 +5,14 @@
 	"repository": "https://github.com/bibishan-pandey/devops-exercise4",
 	"author": "Bibishan Pandey",
 	"license": "MIT",
-  "scripts": {
-    "build": "npx tsc",
-    "start": "node dist/index.js",
-    "dev": "nodemon src/index.ts"
-  },
+	"scripts": {
+		"build": "npx tsc",
+		"start": "node dist/index.js",
+		"dev": "nodemon src/index.ts"
+	},
+	"publishConfig": {
+		"registry": "http://172.17.0.1:8081/repository/devops-exercise4-hosted/"
+	},
 	"dependencies": {
 		"dotenv": "^16.4.5",
 		"express": "^4.21.1"

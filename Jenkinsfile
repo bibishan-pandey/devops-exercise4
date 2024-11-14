@@ -1,53 +1,61 @@
 pipeline {
     agent any
 
-    environment {
-        SONARQUBE_URL = 'http://sonarqube:9000'
-        SONARQUBE_TOKEN = 'sqp_914a7b2225f5519a2b94dd28a93c637ae8975107'
-        NEXUS_URL = 'http://nexus:8081/repository/maven-releases/'
-        // WORKSPACE = '/home/bibishanpandey/Downloads/3rd Sem/DevOps/devops-exercise4'
-        // WORKSPACE = pwd()
-        WORKSPACE = '/var/jenkins_home/devops-exercise4'
-        NEXUS_CREDENTIALS = credentials('nexus-credentials-id')
+    tools {
+        nodejs 'NodeJS 18.20.5'
     }
+
+    environment {
+        SCANNER_HOME = tool 'SonarQube Scanner 6.2.1.4610'
+
+        NODEJS_HOME = tool name: 'NodeJS 18.20.5'
+        PATH = "${NODEJS_HOME}/bin:${env.PATH}"
+
+        NEXUS_VERSION = "nexus3"
+        NEXUS_PROTOCOL = "http"
+        NEXUS_CREDENTIALS_ID = 'NexusNPMCredentials'
+        NEXUS_AUTH_CREDENTIALS_ID = 'NexusAuthCredentials'
+
+        SONAR_HOST_URL = "http://172.17.0.1:9000"
+    }
+
 
     stages {
         stage('Checkout') {
             steps {
-                echo 'Checking out the code...'
                 checkout scm
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                echo 'Installing dependencies...'
-                sh 'yarn install'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                echo 'Running tests...'
-                echo 'Tests passed!'
+                withCredentials([file(credentialsId: 'NexusNPMCredentials', variable: 'npmrc')]) {
+                    echo 'Building...'
+                    sh "npm install --userconfig $npmrc --registry http://172.17.0.1:8081/repository/devops-exercise4-proxy/ --loglevel verbose"
+                }
             }
         }
 
         stage('Build') {
             steps {
-                echo 'Building the project...'
-                sh 'yarn build'
+                withCredentials([file(credentialsId: 'NexusNPMCredentials', variable: 'npmrc')]) {
+                    echo 'Building...'
+                    sh "npm run build --userconfig $npmrc --registry http://172.17.0.1:8081/repository/devops-exercise4-proxy/ --loglevel verbose"
+                }
             }
         }
 
         stage('SonarQube Analysis') {
-            environment {
-                scannerHome = tool 'lil-sonar-tool';
-            }
-
             steps {
-                withSonarQubeEnv(credentialsId: 'SonarQubeToken', installationName: 'lil sonar installation') {
-                    sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=devops-exercise4 -Dsonar.sources=src -Dsonar.host.url=${SONARQUBE_URL} -Dsonar.login=${SONARQUBE_TOKEN}"
+                script {
+                    withSonarQubeEnv() {
+                        sh """${SCANNER_HOME}/bin/sonar-scanner \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://172.17.0.1:9000 \
+                        -Dsonar.token=sqp_b7fdcdf36cbd945c440fd56ace7e31d701761ae0 \
+                        -Dsonar.exclusions=**/node_modules/** \
+                        -Dsonar.projectKey=DevOps-Exercise-4"""
+                    }
                 }
             }
         }
@@ -55,45 +63,45 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 script {
-                    // Wait for the SonarQube Quality Gate results
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-
-        stage('Archive Artifact') {
-            steps {
-                script {
-                    // Archive the build artifact (if needed)
-                    archiveArtifacts allowEmptyArchive: true, artifacts: '**/dist/*.js'
-                }
-            }
-        }
-
-        stage('Deploy to Nexus') {
-            steps {
-                script {
-                    // Deploy the build artifact to Nexus (Maven Repository)
-                    sh '''
-                    curl -u ${NEXUS_CREDENTIALS} \
-                        --upload-file dist/index.js \
-                        ${NEXUS_URL}/com/example/devops-exercise4/1.0.0/devops-exercise4-1.0.0.jar
+                    sh '''#!/bin/bash
+                    curl http://172.17.0.1:9000/api/server/version
                     '''
+
+
+                    sleep(time: 30, unit: 'SECONDS')
+                    def qualityGate = waitForQualityGate()
+                    if (qualityGate.status == 'IN_PROGRESS') {
+                        sleep(time: 30, unit: 'SECONDS')
+                        error "Quality Gate is in progress. Trying again..."
+                    }
+
+                    if (qualityGate.status != 'OK') {
+                        error "Quality Gate failed: ${qualityGate.status}"
+                    }
+                    else {
+                        echo "Quality Gate passed: ${qualityGate.status}"
+                    }
                 }
             }
         }
 
-        stage('Deploy to Production') {
+
+        stage('Publish to Nexus') {
             steps {
-                echo 'Deploying to production...'
-                sh 'yarn start'
+                withCredentials([file(credentialsId: 'NexusNPMCredentials', variable: 'npmrc')]) {
+                    echo 'Publishing to Nexus...'
+                    sh "npm publish --userconfig ${npmrc} --loglevel verbose"
+                }
             }
         }
     }
-    
+
     post {
-        always {
-            cleanWs()
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }

@@ -1,9 +1,12 @@
 name: Set up Terraform
 
+# on:
+#     push:
+#         branches:
+#             - master
+# This trigger allows you to manually execute the pipeline
 on:
-    push:
-        branches:
-            - master
+    workflow_dispatch:
 
 jobs:
     terraform:
